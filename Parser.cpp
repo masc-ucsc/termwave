@@ -3,26 +3,6 @@
 #include <iomanip>
 #include <climits>
 
-template <class T>
-int numDigits(T number) {
-	int digits = 0;
-	if (number < 0) digits = 1; // remove this line if '-' counts as a digit
-	while (number) {
-			number /= 10;
-			digits++;
-	}
-	return digits+1; //To give one extra space for nice printing
-}   
-
-std::string decipher(char signal) {
-	if(signal == '0') { //Can make a function to decipher
-    return "_";
-  } else if(signal == '1') {
-    return "‾";
-  } else {
-		return "?";
-	}
-}
 
 /**
  * \brief Splits the given string by space in a vector
@@ -57,8 +37,8 @@ void Parser::AddModule(Module module) {
 	modules_.push_back(module);
 }
 
-void Parser::AddWave(Waveform wave) {
-	wave_.push_back(wave);
+void Parser::AddWave(Wave wave) {
+	waveform_.waveSignal.push_back(wave);
 }
 
 /**
@@ -80,80 +60,19 @@ void Parser::ShowReport() {
 
 	for (auto &module : modules_) {
 		std::cout << "Module: " << module.Name << std::endl;
-		std::cout << "Signals count: " << module.SignalCounter << std::endl << std::endl;
-
-		std::cout << std::setw(20) << std::left << "Name" << std::setw(30) << std::left << "Switching activity" << std::endl;
-		std::cout << std::setw(20) << std::left << "----" << std::setw(30) << std::left << "------------------" << std::endl;
+		std::cout << "Name" << std::endl;
+		std::cout << "----------------------------------------------------------------------------" << std::endl;
 		for (auto &signal : module.Signals) {	
-			std::cout << std::setw(20) << std::left << signal.Name << std::setw(30) << std::left <<((signal.SwitchingActivityCounter > 0) ? signal.SwitchingActivityCounter : 0) << std::endl;
+			std::cout << signal.Name << std::endl;
 		}
 
 		std::cout << "----------------------------------------------------------------------------" << std::endl;
 		std::cout << std::endl;
 	}
 
-	std::cout << "Clock: "; 
-	for(int clock=0; clock<=total_time_; clock+=smallestInterval) { //Sets the appropriate width for increased aesthetic
-		std::cout.fill(' ');
-		std::cout.width(digits_);
-		std::cout << std::left << clock;
-	}
-  std::cout << "\n" << std::endl;
+	//Prints out the entire waveform for all waves
+	waveform_.show(0, waveform_.totalTime);
 
-	
-	for (auto &wave : wave_) { //Prints out the wave
-		int currClock = 0;
-		std::cout << "Wave: " << wave.name << std::endl;
-		for (auto &waveSignal : wave.timeSignal) {	
-			//Needs if statements to print out _ / ‾ ‾
-			std::cout << waveSignal.second << " at time " << waveSignal.first << std::endl;
-		}
-
-		std::cout << "Wave: " << wave.name << "\t";
-		auto waveSignal = wave.timeSignal.begin();
-		char prevSignal = 'b';
-		while(waveSignal != wave.timeSignal.end()) { //Make sure to check that we print to maximum clock for all
-			if(waveSignal != wave.timeSignal.begin()) {
-				if(waveSignal->first == currClock) { //If the time is same as current clock
-					if(waveSignal->second != prevSignal) {
-						if(prevSignal == '0' && (waveSignal->second) == '1') { //TODO Make this into a function to print number of digits to
-							std::cout << "/‾";
-						} else if(prevSignal == '1' && (waveSignal->second) == '0') {
-							std::cout << "\\_";
-						} else { //Handles x case and other if caught
-							std::cout << decipher(waveSignal->second);
-						}
-					} else { //Same as previous signal
-						std::cout << decipher(waveSignal->second);
-					}
-					prevSignal = waveSignal->second;
-					waveSignal++;
-				} else if(waveSignal->first > currClock) { //If the signals time is further than current clock print previous signal and dont advance to next signal
-					std::cout << prevSignal;
-				} 
-				//Maybe add check if variable was not declared at clock 0 so print ?, only case that currClock > waveSignal->first
-			} else { //If it is the first signal, advance to next signal
-				std::cout << decipher(waveSignal->second);
-				prevSignal = waveSignal->second;
-				waveSignal++;
-			}
-			currClock += smallestInterval;
-
-			//Put a check to see if last one and if so, keep printing prev character until last clock is reached
-			
-		}
-		if(currClock < total_time_) { //Check to see if we need to extend prevSignal until total clock is reached
-			int times_to_repeat = (total_time_ - currClock)/smallestInterval;
-			for(int i=0; i<times_to_repeat; i++) {
-				std::cout << decipher(prevSignal);
-			}
-		}
-
-		std::cout << "\n" << std::endl;
-		std::cout << "----------------------------------------------------------------------------" << std::endl;
-		std::cout << std::endl;
-	}
-		
 	std::cout << "--------End report--------" << std::endl;
 }
 
@@ -182,7 +101,6 @@ void Parser::CalculeClockFrequency() {
 			clock_ = 1.0 / (period*GetTimeScale());
 			is_clock_calculated_ = true;
 		}
-
 		clock_counter_++;
 	}
 }
@@ -262,12 +180,15 @@ void Parser::ParseTimeScale() {
  */
 bool Parser::Parse(std::string vcdFilePath) {
 	auto result = false;
+	bool error = false;
 	vcd_file_.open(vcdFilePath);
 
-	smallestInterval = INT_MAX;
+	waveform_.smallestInterval = INT_MAX;
 	int currentClock = 0; //Initializes current clock;
 	if (vcd_file_.is_open()) {
 		vcd_file_path_ = vcdFilePath;
+
+		waveform_.longestSignalName = 0;
 		while (getline(vcd_file_, line_)) {
 			ParseDate();
 
@@ -286,10 +207,9 @@ bool Parser::Parse(std::string vcdFilePath) {
 						signal.SwitchingActivityCounter = -1;
 						auto splittedLineSignal = SplitBySpace(line_);
 						signal.Symbol = splittedLineSignal[3];
-						Waveform wave;
+						Wave wave;
 						wave.symbol = signal.Symbol;
-						//Insert new signal name
-						if (splittedLineSignal.size() == 6) {
+						if (splittedLineSignal.size() == 6) { //Insert new signal name
 							signal.Name = splittedLineSignal[4];
 							wave.name = signal.Name;
 						}
@@ -297,7 +217,9 @@ bool Parser::Parse(std::string vcdFilePath) {
 							signal.Name = splittedLineSignal[4] + ' ' + splittedLineSignal[5];
 							wave.name = signal.Name;
 						}
-
+						if(wave.name.length() > waveform_.longestSignalName) {
+							waveform_.longestSignalName = wave.name.length();
+						}
 						module.Signals.push_back(signal);
 						AddWave(wave);
 					}
@@ -305,104 +227,64 @@ bool Parser::Parse(std::string vcdFilePath) {
 						break;
 					}
 				}
-				
 				AddModule(module);
 			}
 			else if (line_.find("$dumpvars") != std::string::npos) {
-				char switchingActivitySignals[SwitchingActivitySignalsSize] = { '0', '1', 'z' };
+				//char switchingActivitySignals[SwitchingActivitySignalsSize] = { '0', '1', 'x' };
 
-				auto foundSwitchingActivity = false;
+				//auto foundSwitchingActivity = false;
 
-				
+				std::vector<std::string> currentClockSignals; //Error checking for setting a signal multiple times in a clock cycle
 				while (getline(vcd_file_, line_)) { //Goes through rest of file once variables are initialized
-					std::cout << "dumpvars Current line: " << line_ << std::endl;
 					if (!IsClockCalculated())
 						CalculeClockFrequency();
-
 					if(line_[0] == '#') {
-						int clockCurrent = stoi(line_.substr(1, line_.size()));
+						currentClockSignals.clear();
 
-						if(clockCurrent - currentClock < smallestInterval) {
-							smallestInterval = clockCurrent - currentClock;
+						int clockCurrent = stoi(line_.substr(1, line_.size())); //The VCD file's current line that also is the clock
+
+						if(clockCurrent < currentClock) {
+							std::cout << "Error: VCD clock is not in order. Cannot parse." << std::endl;
+							error = true;
+						}
+
+						if(clockCurrent - currentClock < waveform_.smallestInterval ) {
+							waveform_.smallestInterval = clockCurrent - currentClock;
 						}
 						currentClock = stoi(line_.substr(1, line_.size()));
 					}
 
 					if ((line_[0] == '0') || (line_[0] == '1') || (line_[0] == 'x')) {
-						foundSwitchingActivity = false;
-						for (std::vector<Waveform>::iterator wave = wave_.begin();
-							wave != wave_.end() && !foundSwitchingActivity;
-							++wave) {
-								auto lineSubStr = line_.substr(1, line_.size());
-								if (!lineSubStr.empty() && lineSubStr[lineSubStr.size() - 1] == '\r') //Removes carriage return at end of line
-    								lineSubStr.erase(lineSubStr.size() - 1);
-								if (lineSubStr.compare(wave->symbol)==0) {
-									std::cout << "Current line: " << line_ << std::endl;
-									//Store signal in Pair here
-									std::pair<int, char> Pair;
-									Pair.first = currentClock;
-									Pair.second = line_[0];
-									(wave->timeSignal).push_back(Pair);
-								}	
-						}
+						auto lineSubStr = line_.substr(1, line_.size());
+						
+						if (!lineSubStr.empty() && lineSubStr[lineSubStr.size() - 1] == '\r') //Removes carriage return at end of line
+							lineSubStr.erase(lineSubStr.size() - 1);
+						
+						if(std::find(currentClockSignals.begin(), currentClockSignals.end(), lineSubStr) != currentClockSignals.end()) {
+							std::cout << "Error: Cannot set signal multiple times in same clock." << std::endl;
+							error = true;
+						} else {
+							currentClockSignals.push_back(lineSubStr);
+						}	
 
-						//For every module
-						/*for (std::vector<Module>::iterator modulesIterator = modules_.begin();
-							modulesIterator != modules_.end() && !foundSwitchingActivity;
-							++modulesIterator) {
-							//For every signal in current module	
-							for (std::vector<Signal>::iterator signalsIterator = modulesIterator->Signals.begin();
-								signalsIterator != modulesIterator->Signals.end() && !foundSwitchingActivity;
-								++signalsIterator) {
-								for (auto i = 0; i < SwitchingActivitySignalsSize && !foundSwitchingActivity; i++) {
-									auto lineSubStr = line_.substr(1, line_.size());
-									if (!lineSubStr.empty() && lineSubStr[lineSubStr.size() - 1] == '\r') //Removes carriage return at end of line
-    								lineSubStr.erase(lineSubStr.size() - 1);
-									if (lineSubStr.compare(signalsIterator->Symbol)==0) {
-										std::cout << "Current line: " << line_ << std::endl;
-										char currentSignalActivity = ' ';
-										//Store signal in Pair here
-										if (line_[0] == '0') {
-											currentSignalActivity = '0';
-										}
-										else if (line_[0] == '1') {
-											currentSignalActivity = '1';
-										}
-										else if (line_[0] == 'x') {
-											currentSignalActivity = 'x';
-										}
-										//initializes the switching count to 0 and its current activity
-										if (signalsIterator->SwitchingActivityCounter == -1) {
-											//std::cout << "Current symbol is initialized: " << signalsIterator->Symbol << std::endl;
-											signalsIterator->SwitchingActivityCounter++;
-											signalsIterator->CurrentActivity = currentSignalActivity;
-											foundSwitchingActivity = true;
-										}
-										else {
-											//if the signal's current activity is not the current iterating signal
-											//std::cout << "Current symbol not = -1: " << signalsIterator->Symbol << std::endl;
-											if (signalsIterator->CurrentActivity != switchingActivitySignals[i]) {
-												signalsIterator->SwitchingActivityCounter++;
-												signalsIterator->CurrentActivity = currentSignalActivity;
-												foundSwitchingActivity = true;
-											}
-											else {
-												foundSwitchingActivity = false;
-											}
-										}
-									}
-									else {
-										foundSwitchingActivity = false;
-									}
-								}
-							}
-						}*/
+						for (std::vector<Wave>::iterator wave = waveform_.waveSignal.begin(); wave != waveform_.waveSignal.end(); ++wave) {
+							if (lineSubStr.compare(wave->symbol)==0) {
+								//Store signal in Pair here
+								std::pair<int, char> timeSignal;
+								timeSignal.first = currentClock;
+								timeSignal.second = line_[0];
+								(wave->timeSignal).push_back(timeSignal);
+							}	
+						}
 					}
 				}
 			}
 		}
-		digits_ = numDigits(currentClock); //Sets the number of digits for printing
-		total_time_ = currentClock; //Sets the maximum clock for printing
+		if(error) {
+			return false;
+		}
+
+		waveform_.totalTime = currentClock;
 
 		vcd_file_.close();
 		CalculateSignalCounter();

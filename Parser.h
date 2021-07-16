@@ -38,13 +38,9 @@ private:
 	std::string line_;
 	std::string vcd_file_path_;
 	
-	
-	int total_time_;
-	int smallestInterval;
-	std::vector<Waveform> wave_;
-	int digits_;
+	Waveform waveform_;
 
-	void AddWave(Waveform wave);
+	void AddWave(Wave wave);
 
 	void AddModule(Module module);
 	double GetTimeScale() const;
