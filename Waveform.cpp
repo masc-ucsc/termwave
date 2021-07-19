@@ -3,9 +3,9 @@
 #include <iomanip>
 
 int gcd(int a, int b) { //Greatest Common Divisor
-   if (b == 0)
-   return a;
-   return gcd(b, a % b);
+  if (b == 0)
+  return a;
+  return gcd(b, a % b);
 }
 
 std::string decipher(char signal, int digits) { //Translates signal into wave
@@ -84,7 +84,6 @@ void Waveform::show(int fromTime, int toTime) { //Shows all waves from fromTime 
 
     for (auto &wave : waveSignal) { //Prints out the wave
       int currClock = 0;
-      //longest_signal_name_
       std::cout << "Wave: " << std::setw(longestSignalName+2) << std::left << wave.name;
       auto waveSignal = wave.timeSignal.begin();
       char prevSignal = 'b';
@@ -176,7 +175,7 @@ void Waveform::update(std::string var, int time, char value) { //Updates the Wav
   }
 }
 
-char Waveform::get(std::string var, int time) { //Returns a character ('0', '1' or 'x'). Assumes string var is the symbol ex. !, $, %
+char Waveform::get(std::string var, int time) { //Returns a character ('0', '1' or 'x'). Assumes string var is the name
   char result = '?'; //By default if wave does not exist
   for(std::vector<Wave>::iterator wave = waveSignal.begin(); wave != waveSignal.end(); ++wave) {
     if(wave->name == var) {
