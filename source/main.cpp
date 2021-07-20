@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
-#include "Parser.h"
-#include "Waveform.h"
+#include "parser.h"
+#include "waveform.h"
 #include <algorithm>
 
 int main(int argc, char **argv) {

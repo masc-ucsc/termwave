@@ -1,0 +1,44 @@
+$date 
+	7/19/2021
+$end
+$version
+	Example 1
+$end
+$timescale 
+	1ns 
+$end
+
+$scope module top_level $end
+$var wire 1 ! counter $end
+$var wire 2 $ nicenumberbelow $end
+$var wire 3 % input69 $end
+$upscope $end
+$enddefinitions $end
+
+#0
+$dumpvars
+0!
+x$
+1%
+$end
+#250
+1!
+#500
+0!
+1$
+#750
+1!
+#1000
+0!
+0%
+x$
+#1250
+1!
+#1500
+0$
+x%
+#1750
+0!
+#2000
+x!
+x$

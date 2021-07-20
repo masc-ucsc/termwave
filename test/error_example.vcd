@@ -1,0 +1,31 @@
+$date 
+	7/15/2021
+$end
+$version
+	Error Example
+$end
+$timescale 
+	5ns 
+$end
+
+$scope module a $end
+$var wire 1 @ clk $end
+$var wire 2 ^ errorprone $end
+$upscope $end
+$enddefinitions $end
+
+#0
+$dumpvars
+0@
+0^
+$end
+#100
+1^
+#150
+0^
+1^
+#200
+0^
+#300
+0^
+#200

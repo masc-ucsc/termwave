@@ -5,7 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <fstream>
-#include "Waveform.h"
+#include "waveform.h"
 
 const unsigned int SwitchingActivitySignalsSize = 3;
 

@@ -1,4 +1,4 @@
-#include "Parser.h"
+#include "parser.h"
 #include <algorithm>
 #include <iomanip>
 #include <climits>
@@ -60,10 +60,10 @@ void Parser::ShowReport() {
 
 	for (auto &module : modules_) {
 		std::cout << "Module: " << module.Name << std::endl;
-		std::cout << "Name" << std::endl;
+		std::cout << std::setw(30)  << std::left << "Name" << std::right << "Symbol" << std::endl;
 		std::cout << "----------------------------------------------------------------------------" << std::endl;
 		for (auto &signal : module.Signals) {	
-			std::cout << signal.Name << std::endl;
+			std::cout << std::setw(30) << std::left << signal.Name << std::right << signal.Symbol << std::endl;
 		}
 
 		std::cout << "----------------------------------------------------------------------------" << std::endl;
@@ -261,7 +261,7 @@ bool Parser::Parse(std::string vcdFilePath) {
 							lineSubStr.erase(lineSubStr.size() - 1);
 						
 						if(std::find(currentClockSignals.begin(), currentClockSignals.end(), lineSubStr) != currentClockSignals.end()) {
-							std::cout << "Error: Cannot set signal multiple times in same clock." << std::endl;
+							std::cout << "Error: Cannot set signal multiple times in same clock: " << lineSubStr << " Clock: " << currentClock << std::endl;
 							error = true;
 						} else {
 							currentClockSignals.push_back(lineSubStr);

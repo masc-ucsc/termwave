@@ -1,4 +1,4 @@
-#include "Waveform.h"
+#include "waveform.h"
 #include <algorithm>
 #include <iomanip>
 
