@@ -17,7 +17,8 @@ std::string decipher(char signal, int digits);
 struct Wave { //Each independent wave
   std::string symbol;
   std::string name;
-  std::vector<std::pair<int, char>> timeSignal; //Contains each wave's signal at each time
+  bool binary;
+  std::vector<std::pair<int, std::string>> timeSignal; //Contains each wave's signal at each time
 };
 
 class Waveform { //Holds all the signals as a Vector of Waves
@@ -30,8 +31,8 @@ class Waveform { //Holds all the signals as a Vector of Waves
     void add_monitor(std::string var);
     void del_monitor(std::string var);
     void show(int fromTime, int toTime);
-    void update(std::string var, int time, char value);
-    char get(std::string var, int time);
+    void update(std::string var, int time, std::string value);
+    std::string get(std::string var, int time);
 };
 
 #endif

@@ -209,6 +209,7 @@ bool Parser::Parse(std::string vcdFilePath) {
 						signal.Symbol = splittedLineSignal[3];
 						Wave wave;
 						wave.symbol = signal.Symbol;
+						wave.binary = true; //Used for parsing, if not only 1, 0 or x's, can print out full number instead of digital wave
 						if (splittedLineSignal.size() == 6) { //Insert new signal name
 							signal.Name = splittedLineSignal[4];
 							wave.name = signal.Name;
@@ -253,10 +254,12 @@ bool Parser::Parse(std::string vcdFilePath) {
 						}
 						currentClock = stoi(line_.substr(1, line_.size()));
 					}
-
-					if ((line_[0] == '0') || (line_[0] == '1') || (line_[0] == 'x')) {
+					else if(line_[0] == '$') {
+						continue;
+					}
+					// Check if line_ is 3 char long (value and symbol and carriage return)
+					else if ((line_.length() <= 3) && ((line_[0] == '0') || (line_[0] == '1') || (line_[0] == 'x'))) {
 						auto lineSubStr = line_.substr(1, line_.size());
-						
 						if (!lineSubStr.empty() && lineSubStr[lineSubStr.size() - 1] == '\r') //Removes carriage return at end of line
 							lineSubStr.erase(lineSubStr.size() - 1);
 						
@@ -270,9 +273,39 @@ bool Parser::Parse(std::string vcdFilePath) {
 						for (std::vector<Wave>::iterator wave = waveform_.waveSignal.begin(); wave != waveform_.waveSignal.end(); ++wave) {
 							if (lineSubStr.compare(wave->symbol)==0) {
 								//Store signal in Pair here
-								std::pair<int, char> timeSignal;
+								std::pair<int, std::string> timeSignal;
 								timeSignal.first = currentClock;
 								timeSignal.second = line_[0];
+								(wave->timeSignal).push_back(timeSignal);
+							}	
+						}
+					} 
+					else { //Other signals that have non binary values
+						std::cout << "Nonbinary" << std::endl;
+						auto lineSubStr = line_.substr(line_.size()-1, line_.size());
+						std::cout << "line_: " << line_ << std::endl;
+
+						std::cout << "lineSubStr: " << lineSubStr << std::endl;
+
+						auto value = line_.substr(0, line_.size() - 2);
+						std::cout << "value: " << value << std::endl;
+						if (!lineSubStr.empty() && lineSubStr[lineSubStr.size() - 1] == '\r') //Removes carriage return at end of line
+							lineSubStr.erase(lineSubStr.size() - 1);
+						
+						if(std::find(currentClockSignals.begin(), currentClockSignals.end(), lineSubStr) != currentClockSignals.end()) {
+							std::cout << "Error: Cannot set signal multiple times in same clock: " << lineSubStr << " Clock: " << currentClock << std::endl;
+							error = true;
+						} else {
+							currentClockSignals.push_back(lineSubStr);
+						}	
+
+						for (std::vector<Wave>::iterator wave = waveform_.waveSignal.begin(); wave != waveform_.waveSignal.end(); ++wave) {
+							if (lineSubStr.compare(wave->symbol)==0) {
+								//Store signal in Pair here
+								wave->binary = false; //Because the value found is not 0, 1 or x so entire wave print numbers
+								std::pair<int, std::string> timeSignal;
+								timeSignal.first = currentClock;
+								timeSignal.second = value; //Stores everything but last character and carriage return
 								(wave->timeSignal).push_back(timeSignal);
 							}	
 						}
