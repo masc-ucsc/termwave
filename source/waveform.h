@@ -26,6 +26,9 @@ class Waveform { //Holds all the signals as a Vector of Waves
     std::vector<Wave> waveSignal;
     int smallestInterval;
     long unsigned int longestSignalName;
+
+    int longestSignalDigits;
+
     int totalTime;
 
     void add_monitor(std::string var);

@@ -185,6 +185,7 @@ bool Parser::Parse(std::string vcdFilePath) {
 
 	waveform_.smallestInterval = INT_MAX;
 	int currentClock = 0; //Initializes current clock;
+	int maxSignalDigits = 1; //Used for displaying waveform neatly. Initialized to 1 as there would be signals with at least 1 digit
 	if (vcd_file_.is_open()) {
 		vcd_file_path_ = vcdFilePath;
 
@@ -260,6 +261,7 @@ bool Parser::Parse(std::string vcdFilePath) {
 					// Check if line_ is 3 char long (value and symbol and carriage return)
 					else if ((line_.length() <= 3) && ((line_[0] == '0') || (line_[0] == '1') || (line_[0] == 'x'))) {
 						auto lineSubStr = line_.substr(1, line_.size());
+						std::cout << "Line substr binary: " << lineSubStr << std::endl;
 						if (!lineSubStr.empty() && lineSubStr[lineSubStr.size() - 1] == '\r') //Removes carriage return at end of line
 							lineSubStr.erase(lineSubStr.size() - 1);
 						
@@ -281,14 +283,9 @@ bool Parser::Parse(std::string vcdFilePath) {
 						}
 					} 
 					else { //Other signals that have non binary values
-						std::cout << "Nonbinary" << std::endl;
-						auto lineSubStr = line_.substr(line_.size()-1, line_.size());
-						std::cout << "line_: " << line_ << std::endl;
-
-						std::cout << "lineSubStr: " << lineSubStr << std::endl;
-
+						auto lineSubStr = line_.substr(line_.size()-2, line_.size());
+						std::cout << "Line substr nonbinary: " << lineSubStr << std::endl;
 						auto value = line_.substr(0, line_.size() - 2);
-						std::cout << "value: " << value << std::endl;
 						if (!lineSubStr.empty() && lineSubStr[lineSubStr.size() - 1] == '\r') //Removes carriage return at end of line
 							lineSubStr.erase(lineSubStr.size() - 1);
 						
@@ -303,6 +300,7 @@ bool Parser::Parse(std::string vcdFilePath) {
 							if (lineSubStr.compare(wave->symbol)==0) {
 								//Store signal in Pair here
 								wave->binary = false; //Because the value found is not 0, 1 or x so entire wave print numbers
+
 								std::pair<int, std::string> timeSignal;
 								timeSignal.first = currentClock;
 								timeSignal.second = value; //Stores everything but last character and carriage return
@@ -318,7 +316,7 @@ bool Parser::Parse(std::string vcdFilePath) {
 		}
 
 		waveform_.totalTime = currentClock;
-
+		waveform_.longestSignalDigits = maxSignalDigits;
 		vcd_file_.close();
 		CalculateSignalCounter();
 		result = true;

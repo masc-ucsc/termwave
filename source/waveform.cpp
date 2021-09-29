@@ -1,6 +1,7 @@
 #include "waveform.h"
 #include <algorithm>
 #include <iomanip>
+#include <math.h>    
 
 int gcd(int a, int b) { //Greatest Common Divisor
   if(b == 0)
@@ -9,8 +10,8 @@ int gcd(int a, int b) { //Greatest Common Divisor
 }
 
 //digits is the number of times we printing it
+// May not need 3rd parameter binary!!
 
-//Change signal to string 
 
 std::string decipher(std::string signal, int digits, bool binary) { //Translates signal into wave
 	std::string final = "";
@@ -31,21 +32,45 @@ std::string decipher(std::string signal, int digits, bool binary) { //Translates
     }
   } else { //Prints out the number
     //Needs to print the signal length - digits
+    int signalLength = signal.length();
+    int buffer = 0;
+    if(digits > signalLength) { //If the number of digits is greater than the number of characters in signal
+      buffer = digits - signalLength; //Number of spaces to add
+      // std::cout << signal << " buffer dig>sigLen: " << buffer << std::endl;
 
+      //Need to fix
+      for (int i=0; i<floor(buffer/2); i++) {
+        final += " ";
+      }
+      final += signal;
+      for (int i=0; i<ceil(buffer/2); i++) {
+        final += " ";
+      }
+      if(signalLength % 2 != 0){ //Adds the extra space for odd digits
+        final += " ";
+      }
+    } else { //If digits is less than length of signal
+      //Print at least two .. or maybe one .
+      //Must guarantee at least 4 digits have to change the waveform property to allow minimum 4 digits if a signalLength >= 4
+      //If signalLength >= interval and interval < 4 set digits to 4
+        //Do this in while parsing
+      buffer = digits - 2; //Buffer is the signal length minus .. and the |. This is the number of characters to print from signal
+      final += ".."; //Assuming there are at least two available spaces
+      final += signal.substr(signalLength - buffer); //Add the last signalLength - 2 characters
+      //Add specific length cases to have .. vs .
+      //Remove initial | by getting rid of the | at top
+    }\
   }
 	return final;
 }
-
-//New decipher function
-//Takes in non-binary numbers
 
 template <class T>
 int numDigits(T number) {
 	int digits = 0;
 	if (number < 0) digits = 1; // remove this line if '-' counts as a digit
 	while (number) {
-			number /= 10;
-			digits++;
+    number /= 10;
+    digits++;
 	}
 	return digits+1; //To give one extra space for nice printing
 }
@@ -88,17 +113,22 @@ void Waveform::show(int fromTime, int toTime) { //Shows all waves from fromTime 
     std::cout << "Waveform show Error: Range must be within bounds." << std::endl;
   } else {
     int digits = numDigits(toTime);
+    if((digits < 4) && (longestSignalDigits > digits)) {
+      digits = 4; //Set for better printing
+    }
+    //Can set min
+
     std::cout << std::setw(longestSignalName+8) << std::left << "Clock: ";
     for(int clock=fromTime; clock<=toTime; clock+=smallestInterval) { //Sets the appropriate width for increased aesthetic
       std::cout << std::setw(numDigits(toTime)) << std::left << clock;
     }
     std::cout << "\n" << std::endl;
 
-    for (auto &wave : waveSignal) { //Prints out the wave
+    for(auto &wave : waveSignal) { //Prints out the wave
       int currClock = 0;
       std::cout << "Wave: " << std::setw(longestSignalName+2) << std::left << wave.name;
       auto waveSignal = wave.timeSignal.begin();
-      std::string prevSignal = "b";
+      std::string prevSignal = "";
       int prevSignalTime = 0;
       while(waveSignal != wave.timeSignal.end()) { //Make sure to check that we print to maximum clock for all
         if(waveSignal->first > toTime || currClock > toTime) {
@@ -107,21 +137,31 @@ void Waveform::show(int fromTime, int toTime) { //Shows all waves from fromTime 
         if((waveSignal != wave.timeSignal.begin()) && (waveSignal->first >= fromTime)) {
           if(waveSignal->first == currClock) { //If the time is same as current clock
             if(waveSignal->second != prevSignal) {
-              if(prevSignal == "0" && (waveSignal->second) == "1") {
+              if(wave.binary && (prevSignal == "0" && (waveSignal->second) == "1")) {
                 std::cout << "/‾" << decipher(waveSignal->second, digits - 2, wave.binary);
-              } else if(prevSignal == "1" && (waveSignal->second) == "0") {
+              } else if(wave.binary && (prevSignal == "1" && (waveSignal->second) == "0")) {
                 std::cout << "\\_" << decipher(waveSignal->second, digits - 2, wave.binary);
-              } else { //Handles x case and others if caught
+              } else if(wave.binary) { //Handles x case and others if caught
                 std::cout << decipher(waveSignal->second, digits, wave.binary);
+              } else{
+                std::cout << "|" << decipher(waveSignal->second, digits - 1, wave.binary);
               }
             } else { //Same as previous signal
-              std::cout << decipher(waveSignal->second, digits, wave.binary);
+              if(wave.binary) {
+                std::cout << decipher(waveSignal->second, digits, wave.binary);
+              } else {
+                std::cout << "|" << decipher(waveSignal->second, digits - 1, wave.binary);
+              }
             }
             prevSignal = waveSignal->second;
             prevSignalTime = currClock;
             waveSignal++;
           } else if(waveSignal->first > currClock) { //If the signals time is further than current clock print previous signal and dont advance to next signal
-            std::cout << decipher(prevSignal, digits, wave.binary);
+            if(wave.binary) {
+              std::cout << decipher(prevSignal, digits, wave.binary);
+            } else {
+              std::cout << "|" << decipher(prevSignal, digits - 1, wave.binary);
+            }
           }
         } else { //If it is the first signal, advance to next signal
           std::cout << decipher(waveSignal->second, digits, wave.binary);
@@ -134,7 +174,11 @@ void Waveform::show(int fromTime, int toTime) { //Shows all waves from fromTime 
       if(currClock <= toTime || prevSignalTime < toTime) { //Check to see if we need to extend prevSignal until toTime is reached
         int times_to_repeat = (toTime - prevSignalTime)/smallestInterval;
         for(int i=0; i<times_to_repeat; i++) {
-          std::cout << decipher(prevSignal, digits, wave.binary);
+          if(wave.binary) {
+            std::cout << decipher(prevSignal, digits, wave.binary);
+          } else {
+            std::cout << "|" << decipher(prevSignal, digits - 1, wave.binary);
+          }        
         }
       }
 
